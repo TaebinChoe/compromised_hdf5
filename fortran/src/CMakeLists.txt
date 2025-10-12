@@ -411,6 +411,7 @@ set (f90_F_BASE_SOURCES
     ${HDF5_F90_SRC_SOURCE_DIR}/H5Eff.F90
     ${HDF5_F90_SRC_SOURCE_DIR}/H5ESff.F90
     ${HDF5_F90_SRC_SOURCE_DIR}/H5Fff.F90
+    ${HDF5_F90_SRC_SOURCE_DIR}/H5FDff.F90
     ${HDF5_F90_SRC_SOURCE_DIR}/H5Gff.F90
     ${HDF5_F90_SRC_SOURCE_DIR}/H5Iff.F90
     ${HDF5_F90_SRC_SOURCE_DIR}/H5Lff.F90
@@ -419,7 +420,6 @@ set (f90_F_BASE_SOURCES
     ${HDF5_F90_SRC_SOURCE_DIR}/H5Rff.F90
     ${HDF5_F90_SRC_SOURCE_DIR}/H5Sff.F90
     ${HDF5_F90_SRC_SOURCE_DIR}/H5Tff.F90
-    ${HDF5_F90_SRC_SOURCE_DIR}/H5VFDff.F90
     ${HDF5_F90_SRC_SOURCE_DIR}/H5VLff.F90
     ${HDF5_F90_SRC_SOURCE_DIR}/H5Zff.F90
 )
@@ -563,6 +563,7 @@ set (mod_export_files
     h5e.mod
     h5es.mod
     h5f.mod
+    h5fd.mod
     h5g.mod
     h5i.mod
     h5l.mod
@@ -572,7 +573,6 @@ set (mod_export_files
     h5r.mod
     h5s.mod
     h5t.mod
-    h5vfd.mod
     h5vl.mod
     h5z.mod
     h5_gen.mod

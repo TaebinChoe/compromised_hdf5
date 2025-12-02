@@ -306,8 +306,26 @@ jobs:
         id: buildhdf5
         shell: bash
         run: |
+          # macOS: Disable Spotlight indexing to prevent file locking during CPack
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            echo "Disabling Spotlight indexing temporarily"
+            sudo mdutil -i off / || true
+          fi
+
           cd "${{ github.workspace }}"
-          cmake --workflow --preset="${{ steps.set-preset.outputs.preset }}" --fresh
+
+          # Run workflow with retry logic for macOS CPack failures
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            echo "Running CMake workflow with macOS retry logic..."
+            if ! cmake --workflow --preset="${{ steps.set-preset.outputs.preset }}" --fresh; then
+              echo "⚠️ First attempt failed, retrying in 5 seconds..."
+              sleep 5
+              cmake --workflow --preset="${{ steps.set-preset.outputs.preset }}" --fresh
+            fi
+          else
+            # Non-macOS: run normally without retry
+            cmake --workflow --preset="${{ steps.set-preset.outputs.preset }}" --fresh
+          fi
 
       - name: Extract version information
         id: version-info

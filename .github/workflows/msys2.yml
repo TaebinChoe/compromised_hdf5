@@ -74,16 +74,16 @@ jobs:
 
       - name: Build
         run: |
-          cmake --build . --parallel 3 --config ${{ inputs.build_mode }}
+          cmake --build . --parallel 2 --config ${{ inputs.build_mode }}
         working-directory: ${{ runner.workspace }}/build
 
       - name: Run Tests
         run: |
-          ctest . --parallel 2 -C ${{ inputs.build_mode }} -V -E "testhdf5-base|cache_api|dt_arith|H5TEST-dtypes|err_compat"
+          ctest . --parallel 2 -C ${{ inputs.build_mode }} -V -E "cache_api|dt_arith|err_compat"
         working-directory: ${{ runner.workspace }}/build
 
       - name: Run Expected to Fail Tests
         run: |
-          ctest . --parallel 2 -C ${{ inputs.build_mode }} -V -R "testhdf5-base|cache_api|dt_arith|H5TEST-dtypes|err_compat"
+          ctest . --parallel 2 -C ${{ inputs.build_mode }} -V -R "cache_api|dt_arith|err_compat"
         working-directory: ${{ runner.workspace }}/build
         continue-on-error: true

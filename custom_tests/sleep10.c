@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <unistd.h>
 
-int main() {
+int
+main()
+{
     printf("sleep10 started by PID %d\n", getpid());
     fflush(stdout);
     sleep(10);

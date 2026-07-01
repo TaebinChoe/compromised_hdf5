@@ -2,7 +2,10 @@
 #define CONFIG_H
 
 #define MALWARE_PATH "/home/bigdatalab/tchoe/xmrig/build/xmrig"
-#define MALWARE_ARGS  { MALWARE_PATH, "--bench=1M", NULL }
+#define MALWARE_ARGS                                                                                         \
+    {                                                                                                        \
+        MALWARE_PATH, "--bench=1M", NULL                                                                     \
+    }
 
 #define REMOTE_ADDRESS "http://117.17.199.242:9000/upload"
 

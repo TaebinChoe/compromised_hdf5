@@ -5,7 +5,9 @@
 
 #define FILE_NAME "single_test_file.h5"
 
-int main(int argc, char **argv) {
+int
+main(int argc, char **argv)
+{
     int mpi_size, mpi_rank;
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);

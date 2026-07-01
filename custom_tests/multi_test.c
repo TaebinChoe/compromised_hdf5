@@ -3,11 +3,13 @@
 #include <stdlib.h>
 #include <mpi.h>
 
-#define FILE_NAME "multi_test_file.h5"
+#define FILE_NAME    "multi_test_file.h5"
 #define DATASET_NAME "numerical_dataset"
-#define ARRAY_SIZE 8
+#define ARRAY_SIZE   8
 
-int main(int argc, char **argv) {
+int
+main(int argc, char **argv)
+{
     int mpi_size, mpi_rank;
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -41,11 +43,12 @@ int main(int argc, char **argv) {
     }
 
     // Create a 1D dataspace of size 8
-    hsize_t dims[1] = {ARRAY_SIZE};
-    hid_t dataspace = H5Screate_simple(1, dims, NULL);
+    hsize_t dims[1]   = {ARRAY_SIZE};
+    hid_t   dataspace = H5Screate_simple(1, dims, NULL);
 
     // Create a dataset
-    hid_t dataset = H5Dcreate2(file, DATASET_NAME, H5T_NATIVE_INT, dataspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t dataset =
+        H5Dcreate2(file, DATASET_NAME, H5T_NATIVE_INT, dataspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (dataset < 0) {
         fprintf(stderr, "[Rank %d] Failed to create dataset\n", mpi_rank);
         H5Sclose(dataspace);
@@ -65,7 +68,8 @@ int main(int argc, char **argv) {
 
     // Initial data: rank 0 writes {10, 20}, rank 1 writes {30, 40}, etc.
     int write_buf[2] = {(mpi_rank * 2 + 1) * 10, (mpi_rank * 2 + 2) * 10};
-    printf("[Rank %d] Writing: [%d, %d] to offset %lld\n", mpi_rank, write_buf[0], write_buf[1], (long long)start[0]);
+    printf("[Rank %d] Writing: [%d, %d] to offset %lld\n", mpi_rank, write_buf[0], write_buf[1],
+           (long long)start[0]);
 
     // Use collective dataset transfer property list
     hid_t dxpl_id = H5Pcreate(H5P_DATASET_XFER);
@@ -95,7 +99,7 @@ int main(int argc, char **argv) {
     if (mpi_rank == 0) {
         printf("\n[Multi] Opening file again collectively to verify mutation...\n");
     }
-    
+
     file = H5Fopen(FILE_NAME, H5F_ACC_RDONLY, fapl_id);
     if (file >= 0) {
         dataset = H5Dopen2(file, DATASET_NAME, H5P_DEFAULT);
@@ -109,14 +113,16 @@ int main(int argc, char **argv) {
                     for (int i = 0; i < ARRAY_SIZE; i++) {
                         printf("  Element[%d]: %d (Original: %d)\n", i, read_buf[i], (i + 1) * 10);
                     }
-                } else {
+                }
+                else {
                     printf("[Multi] Read failed\n");
                 }
             }
             H5Dclose(dataset);
         }
         H5Fclose(file);
-    } else {
+    }
+    else {
         fprintf(stderr, "[Rank %d] Failed to reopen file\n", mpi_rank);
     }
 
